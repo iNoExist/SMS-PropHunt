@@ -1,7 +1,6 @@
-// Some stupid rigidbody based movement by Dani
-
 using System;
 using UnityEngine;
+using Cinemachine;
 
 public class PlayerMovement : MonoBehaviour {
 
@@ -9,11 +8,18 @@ public class PlayerMovement : MonoBehaviour {
     public bool ThirdPerson = false;
     public Transform playerCam;
     public Transform orientation;
-    
+    public CinemachineVirtualCamera vcam;
+    public float scrollscale;
+
     //Other
     private Rigidbody rb;
+    private CinemachineOrbitalTransposer transposer;
 
     //Rotation and look
+    [HideInInspector]
+    public bool LookLock = false;
+    [HideInInspector]
+    public bool Locked = false;
     private float xRotation;
     private float sensitivity = 50f;
     private float sensMultiplier = 1f;
@@ -40,6 +46,7 @@ public class PlayerMovement : MonoBehaviour {
     public float jumpForce = 550f;
     
     //Input
+    float scroll;
     float x, y;
     bool jumping, sprinting, crouching;
     
@@ -49,6 +56,7 @@ public class PlayerMovement : MonoBehaviour {
 
     void Awake() {
         rb = GetComponent<Rigidbody>();
+        transposer = vcam.GetCinemachineComponent<CinemachineOrbitalTransposer>();
     }
     
     void Start() {
@@ -65,24 +73,37 @@ public class PlayerMovement : MonoBehaviour {
     private void Update()
     {
         MyInput();
-        Look();
-        
+        if(!Locked && !LookLock){Look();}        
     }
 
     /// <summary>
     /// Find user input. Should put this in its own class but im lazy
     /// </summary>
     private void MyInput() {
-        x = Input.GetAxisRaw("Horizontal");
-        y = Input.GetAxisRaw("Vertical");
-        jumping = Input.GetButton("Jump");
-        crouching = Input.GetKey(KeyCode.LeftControl);
-      
-        //Crouching
-        if (Input.GetKeyDown(KeyCode.LeftControl))
-            StartCrouch();
-        if (Input.GetKeyUp(KeyCode.LeftControl))
-            StopCrouch();
+        if(!Locked){
+            x = Input.GetAxisRaw("Horizontal");
+            y = Input.GetAxisRaw("Vertical");
+            jumping = Input.GetButton("Jump");
+            crouching = Input.GetKey(KeyCode.LeftControl);
+            //Crouching
+            if (Input.GetKeyDown(KeyCode.LeftControl))
+                StartCrouch();
+            if (Input.GetKeyUp(KeyCode.LeftControl))
+                StopCrouch();
+        }
+        if(ThirdPerson && Input.mouseScrollDelta.y != 0){scroll = Input.mouseScrollDelta.y * -scrollscale; transposer.m_FollowOffset = new Vector3(0f, Mathf.Clamp((transposer.m_FollowOffset.y + (scroll/7)),2f,6f), Mathf.Clamp((transposer.m_FollowOffset.z - (scroll/5)),-10f,-3.33333333333f));}
+    }
+
+    public void scrollzoom(){
+
+    }
+
+    public void TogglePropLock(){
+        Locked = !Locked;
+        transposer.m_RecenterToTargetHeading.m_enabled = !Locked;
+        if (Locked)
+            x=0;y=0;jumping = false;
+            if(crouching){crouching = false; StopCrouch();}
     }
 
     private void StartCrouch() {
@@ -194,9 +215,8 @@ public class PlayerMovement : MonoBehaviour {
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
         //Perform the rotations
-        if (!ThirdPerson){
-            playerCam.transform.localRotation = Quaternion.Euler(xRotation, desiredX, 0); }
-        orientation.transform.localRotation = Quaternion.Euler(0, desiredX, 0);
+        if (!ThirdPerson){ playerCam.transform.localRotation = Quaternion.Euler(xRotation, desiredX, 0); }
+        else{orientation.transform.localRotation = Quaternion.Euler(0, desiredX, 0);}
     }
 
     private void CounterMovement(float x, float y, Vector2 mag) {
