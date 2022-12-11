@@ -10,6 +10,7 @@ public class PlayerMovement : MonoBehaviour {
     public Transform orientation;
     public CinemachineVirtualCamera vcam;
     public float scrollscale;
+    public Transform BoxPivot;
 
     //Other
     private Rigidbody rb;
@@ -56,7 +57,7 @@ public class PlayerMovement : MonoBehaviour {
 
     void Awake() {
         rb = GetComponent<Rigidbody>();
-        transposer = vcam.GetCinemachineComponent<CinemachineOrbitalTransposer>();
+        if(ThirdPerson){transposer = vcam.GetCinemachineComponent<CinemachineOrbitalTransposer>();}
     }
     
     void Start() {
@@ -73,7 +74,8 @@ public class PlayerMovement : MonoBehaviour {
     private void Update()
     {
         MyInput();
-        if(!Locked && !LookLock){Look();}        
+        if((!Locked && !LookLock))
+        {Look();}        
     }
 
     /// <summary>
@@ -91,11 +93,8 @@ public class PlayerMovement : MonoBehaviour {
             if (Input.GetKeyUp(KeyCode.LeftControl))
                 StopCrouch();
         }
-        if(ThirdPerson && Input.mouseScrollDelta.y != 0){scroll = Input.mouseScrollDelta.y * -scrollscale; transposer.m_FollowOffset = new Vector3(0f, Mathf.Clamp((transposer.m_FollowOffset.y + (scroll/7)),2f,6f), Mathf.Clamp((transposer.m_FollowOffset.z - (scroll/5)),-10f,-3.33333333333f));}
-    }
-
-    public void scrollzoom(){
-
+        if(ThirdPerson && Input.mouseScrollDelta.y != 0)
+        {scroll = Input.mouseScrollDelta.y * -scrollscale; transposer.m_FollowOffset = new Vector3(0f, Mathf.Clamp((transposer.m_FollowOffset.y + (scroll/7)),2f,6f), Mathf.Clamp((transposer.m_FollowOffset.z - (scroll/5)),-10f,-3.33333333333f));}
     }
 
     public void TogglePropLock(){
@@ -205,7 +204,7 @@ public class PlayerMovement : MonoBehaviour {
             Vector3 rot = playerCam.transform.localRotation.eulerAngles;
             desiredX = rot.y + mouseX;
         }
-        else
+        else if (ThirdPerson)
         {
             Vector3 rot = orientation.transform.localRotation.eulerAngles;
             desiredX = rot.y + mouseX;
@@ -215,8 +214,10 @@ public class PlayerMovement : MonoBehaviour {
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
         //Perform the rotations
-        if (!ThirdPerson){ playerCam.transform.localRotation = Quaternion.Euler(xRotation, desiredX, 0); }
-        else{orientation.transform.localRotation = Quaternion.Euler(0, desiredX, 0);}
+        if (!ThirdPerson){
+            playerCam.transform.localRotation = Quaternion.Euler(xRotation, desiredX, 0); 
+            BoxPivot.transform.localRotation = Quaternion.Euler(Mathf.Clamp(xRotation,-25f,30f),BoxPivot.transform.localRotation.y, BoxPivot.transform.localRotation.z);}
+        orientation.transform.localRotation = Quaternion.Euler(0, desiredX, 0);
     }
 
     private void CounterMovement(float x, float y, Vector2 mag) {
